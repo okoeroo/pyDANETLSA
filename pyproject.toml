@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyDANETLSA"
-version = "1.0.11"
+version = "2.0.1"
 description = "Python library to generate a TLSA record format based on the active certificate on a host."
 readme = "README.md"
 authors = [{ name = "Oscar Koeroo", email = "okoeroo@gmail.com" }]

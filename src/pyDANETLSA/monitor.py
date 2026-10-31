@@ -4,10 +4,15 @@ import sys
 import json
 import syslog
 
+# Direct execution has no package context; use this checkout's src directory.
+if __package__ in (None, ""):
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from pyDANETLSA import DANETLSA
 from pyDANETLSA import DANETLS_protocol_to_str, str_to_DANETLS_protocol
 
-from .libs.configuration import arguments, is_startup_clean
+from pyDANETLSA.libs.configuration import arguments, is_startup_clean
 
 
 def execute_test(fqdn=None, port=25, domain=None,
