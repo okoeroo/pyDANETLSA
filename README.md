@@ -4,14 +4,14 @@ Author: Oscar Koeroo
 # pyDANETLSA
 Generate TLSA record for DANE. Generated either by probing the resource and using a StartTLS or plain TLS handshake to extract the certificate, public key and formulate a TLSA 3 1 1 format. Also a X.509 in PEM or DER file format is possible.
 
-## Class: danetlsa
+## Class: DANETLSA
 ### Initializer / __init__():
 Start a new instance of pyDANETLSA and initialize it with the following named attributes:
 
 * fqdn: Fully Qualified Domain Name which sets the full name of a host, e.g. smtp.koeroo.net. From this value the domain and host part is extracted. However, the algorithm expects a zone of two components, being the TLD and the zone name. If this is either three or one for gTLDs the calculation is borked. Use the ***domain*** attribute to force the calculation to become relative to the provided domain instead of guessing the zone structure.
 * port: The TCP or UDP port number for with the DANE TLSA record is to be generated.
-* tlsa\_protocol: Select the output TLSA protocol. Options are limited to 'tcp', 'udp' and 'sctp'. Default is 'tcp'.
-* probe\_protocol: Selects the probe method/read method. Choices are fixed to:
+* transport\_proto: Select the output TLSA protocol. Options are limited to 'tcp', 'udp' and 'sctp'. Default is 'tcp'.
+* app\_protocol: Selects the probe method/read method. Choices are fixed to:
 
    * ***DANETLSA_IMAP***: Probes IMAP with StartTLS on the provided port.
    * ***DANETLSA_POP3***: Probes POP3 with StartTLS on the provided port.
@@ -107,9 +107,22 @@ import pyDANETLSA
 
 print("Protocol support list:", pyDANETLSA.DANETLS_protocols)
 
-d = pyDANETLSA.danetlsa(fqdn='smtp.koeroo.net.', port=25,  protocol=pyDANETLSA.DANETLSA_SMTP)
+d = pyDANETLSA.DANETLSA(fqdn='smtp.koeroo.net.', port=25,  app_protocol=pyDANETLSA.DANETLSAprotocols.DANETLSA_SMTP)
 d.connect()
 print("TLSA RR with FQDN", d.tlsa_rr_fqdn())
 print("Match DNS TLSA records with X.509 certificate:", d.match_cert_with_tlsa_rr())
 ```
 
+
+## Installation and monitoring
+
+Install from this checkout with `python3 -m pip install .` (inside a virtual environment).
+Run the monitor as a module:
+
+```sh
+python3 -m pyDANETLSA.monitor --fqdn smtp.example.org --port 25 --protocol SMTP
+```
+
+Legacy callers such as transip-cmd can continue to use `danetlsa`,
+`probe_protocol`, the module-level `DANETLSA_*` constants and `engage()`.
+The current API uses `DANETLSA`, `app_protocol`, `DANETLSAprotocols` and `connect()`.

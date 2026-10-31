@@ -215,13 +215,13 @@ class DANETLSA(object):
             self.cert_pem = ssl.DER_cert_to_PEM_cert(self.cert_der)
 
         elif self.app_protocol == DANETLSAprotocols.DANETLSA_PEM:
-            f = open(self.certfile, "r")
-            self.cert_pem = f.read()
+            with open(self.certfile, "r") as f:
+                self.cert_pem = f.read()
             self.cert_der = ssl.PEM_cert_to_DER_cert(self.cert_pem)
 
         elif self.app_protocol == DANETLSAprotocols.DANETLSA_DER:
-            f = open(self.certfile, "rb")
-            self.cert_der = f.read()
+            with open(self.certfile, "rb") as f:
+                self.cert_der = f.read()
             self.cert_pem = ssl.DER_cert_to_PEM_cert(self.cert_der)
 
         elif self.app_protocol == DANETLSAprotocols.DANETLSA_FTP:
@@ -232,6 +232,9 @@ class DANETLSA(object):
 
         ### Parsing into X.509 object
         self.cert = crypto.load_certificate(crypto.FILETYPE_ASN1, self.cert_der)
+
+    # Compatibility with callers predating the connect() API.
+    engage = connect
 
     def results_to_dict(self):
         r = {}
@@ -256,6 +259,31 @@ class DANETLSA(object):
         r['time_left_on_certificate_dict'] = self.time_left_on_certificate_dict()
 
         return r
+
+# Public aliases retained for existing transip-cmd installations.
+DANETLSA_IMAP = DANETLSAprotocols.DANETLSA_IMAP
+DANETLSA_POP3 = DANETLSAprotocols.DANETLSA_POP3
+DANETLSA_SMTP = DANETLSAprotocols.DANETLSA_SMTP
+DANETLSA_TLS = DANETLSAprotocols.DANETLSA_TLS
+DANETLSA_PEM = DANETLSAprotocols.DANETLSA_PEM
+DANETLSA_DER = DANETLSAprotocols.DANETLSA_DER
+DANETLSA_FTP = DANETLSAprotocols.DANETLSA_FTP
+DANETLS_protocols = DANETLSA_get_supported_protocols()
+
+
+class danetlsa(DANETLSA):
+    """Compatibility adapter for the original public constructor."""
+
+    def __init__(self, fqdn=None, port=None, domain=None,
+                 tlsa_protocol='tcp', probe_protocol=DANETLSA_TLS,
+                 certfile=None, timeout=10, *, protocol=None):
+        if protocol is not None:
+            probe_protocol = protocol
+        super().__init__(fqdn=fqdn, port=port, domain=domain,
+                         transport_proto=tlsa_protocol,
+                         app_protocol=probe_protocol,
+                         certfile=certfile, timeout=timeout)
+
 
 def execute_test(fqdn=None, port=25, domain=None,
                     transport_proto='tcp',

@@ -7,7 +7,7 @@ import syslog
 from pyDANETLSA import DANETLSA
 from pyDANETLSA import DANETLS_protocol_to_str, str_to_DANETLS_protocol
 
-from libs.configuration import arguments, is_startup_clean
+from .libs.configuration import arguments, is_startup_clean
 
 
 def execute_test(fqdn=None, port=25, domain=None,

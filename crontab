@@ -1,4 +1,4 @@
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-* * * * * python3 /usr/src/app/monitor.py --fqdn smtp.koeroo.net --port 25 --protocol SMTP
+* * * * * python3 -m pyDANETLSA.monitor --fqdn smtp.koeroo.net --port 25 --protocol SMTP
