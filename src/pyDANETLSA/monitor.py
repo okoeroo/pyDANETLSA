@@ -9,7 +9,7 @@ if __package__ in (None, ""):
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pyDANETLSA import DANETLSA
+from pyDANETLSA import DANETLSA, DANETLSAConnectionError, TLSAResolutionError
 from pyDANETLSA import DANETLS_protocol_to_str, str_to_DANETLS_protocol
 
 from pyDANETLSA.libs.configuration import arguments, is_startup_clean
@@ -81,5 +81,9 @@ if __name__ == "__main__":
     if not is_startup_clean(args):
         sys.exit(1)
 
-    res = monitor(args)
+    try:
+        res = monitor(args)
+    except (DANETLSAConnectionError, TLSAResolutionError) as err:
+        print(f"Error: {err}", file=sys.stderr)
+        sys.exit(1)
     sys.exit(res)

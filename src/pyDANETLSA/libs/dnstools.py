@@ -140,3 +140,29 @@ async def a_dns_query(fqdn: str, r_type: str,
     except Exception as e:
         print(f"DNS query: error='{e}' FQDN={fqdn} RRtype={r_type}", file=sys.stderr)
         return DNSERRORS.ERROR, None
+
+class TLSAResolutionError(Exception):
+    """TLSA owner could not be resolved safely."""
+
+
+def resolve_tlsa_owner(fqdn, max_hops=16):
+    """Follow CNAMEs explicitly; never treat lookup failures as absence."""
+    import dns.name
+    resolver = dns.resolver.Resolver()
+    resolver.lifetime = 10
+    current = dns.name.from_text(fqdn).canonicalize()
+    visited = set()
+    chain = [current.to_text()]
+    for _ in range(max_hops + 1):
+        if current in visited:
+            raise TLSAResolutionError(f"CNAME loop at {current}")
+        visited.add(current)
+        try:
+            answer = resolver.resolve(current, "CNAME")
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+            return current.to_text(), chain
+        except dns.exception.DNSException as err:
+            raise TLSAResolutionError(f"Cannot resolve CNAME for {current}: {err}") from err
+        current = answer[0].target.canonicalize()
+        chain.append(current.to_text())
+    raise TLSAResolutionError(f"CNAME chain exceeds {max_hops} hops: {fqdn}")

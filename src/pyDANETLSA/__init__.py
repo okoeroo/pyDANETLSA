@@ -2,6 +2,7 @@
 
 import os
 import ssl
+import socket
 import ftplib
 import imaplib
 import poplib
@@ -11,6 +12,11 @@ from enum import Enum
 
 from .libs import funcs
 from .libs import dnstools
+from .libs.dnstools import TLSAResolutionError, resolve_tlsa_owner
+
+
+class DANETLSAConnectionError(Exception):
+    """Certificate probing failed; the original exception is available as __cause__."""
 
 
 class DANETLSAprotocols(Enum):
@@ -111,10 +117,14 @@ class DANETLSA(object):
             if not os.path.isfile(self.certfile):
                 raise IOError("file '{}' is not a file.".format(self.certfile))
 
+    def tlsa_target(self):
+        return resolve_tlsa_owner(self.tlsa_rr_name_fqdn())
+
     def dns_tlsa(self):
         # Parse and construct config for dnspython
         dns_config = dnstools.DnsPythonConfig(None)
-        status, answers = dnstools.dns_query(self.tlsa_rr_name_fqdn(),
+        target, self.cname_chain = self.tlsa_target()
+        status, answers = dnstools.dns_query(target,
                                     'TLSA',
                                     None,
                                     False)
@@ -191,6 +201,31 @@ class DANETLSA(object):
                self.tlsa_rdata_3_1_1()
 
     def connect(self):
+        """Fetch a certificate, reporting expected connection failures with context."""
+        if self.app_protocol in (DANETLSAprotocols.DANETLSA_PEM,
+                                 DANETLSAprotocols.DANETLSA_DER):
+            return self._connect()
+        try:
+            return self._connect()
+        except (OSError, smtplib.SMTPException, imaplib.IMAP4.error,
+                poplib.error_proto, ftplib.Error, EOFError) as err:
+            if isinstance(err, socket.gaierror):
+                reason = f"hostname lookup failed: {err}"
+            elif isinstance(err, TimeoutError):
+                reason = f"connection or handshake timed out (timeout: {self.timeout}s)"
+            elif isinstance(err, ConnectionRefusedError):
+                reason = "connection refused"
+            elif isinstance(err, ssl.SSLError):
+                reason = f"TLS handshake failed: {err}"
+            else:
+                reason = str(err) or type(err).__name__
+            protocol = DANETLS_protocol_to_str(self.app_protocol)
+            raise DANETLSAConnectionError(
+                f"Cannot retrieve certificate from {self.fqdn}:{self.port} "
+                f"({protocol}): {reason}"
+            ) from err
+
+    def _connect(self):
         if self.app_protocol == DANETLSAprotocols.DANETLSA_TLS:
             self.cert_pem = ssl.get_server_certificate((self.fqdn, self.port),
                                                        timeout=self.timeout)
