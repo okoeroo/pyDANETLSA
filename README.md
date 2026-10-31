@@ -126,3 +126,20 @@ python3 -m pyDANETLSA.monitor --fqdn smtp.example.org --port 25 --protocol SMTP
 Legacy callers such as transip-cmd can continue to use `danetlsa`,
 `probe_protocol`, the module-level `DANETLSA_*` constants and `engage()`.
 The current API uses `DANETLSA`, `app_protocol`, `DANETLSAprotocols` and `connect()`.
+
+## Calculating or checking TLSA hashes over TCP
+
+Call `connect()` first. `tlsa_rdata_3_1_1()` (or `"auto"`) hashes the
+connected leaf certificate's DER SubjectPublicKeyInfo. Pass a SHA-256 hex
+hash to require an exact match.
+
+`tlsa_rdata_2_1_1()` (or `"auto"`) retrieves the live server chain and
+selects the leaf's issuing CA, verifying the chain, validity and hostname
+using OpenSSL. Pass a hash to validate that specific CA instead.
+The second probe must return the same leaf certificate. OpenSSL must be
+installed. Automatic discovery checks consistency of the observed chain;
+it is not an independently supplied trust pin.
+
+In transip-cmd, use `--tlsa-311 auto --tlsa-211 auto`, or replace either
+`auto` with a SHA-256 hex hash. Live probes use TCP; the TLSA transport
+label does not enable UDP/DTLS probing. A mismatch aborts before DNS writes.

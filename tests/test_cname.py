@@ -50,3 +50,20 @@ class CnameTests(unittest.TestCase):
             with self.assertRaises(TLSAResolutionError):
                 cmd.update_danetlsa(domain, args)
             domain.dns.create.assert_not_called()
+
+    def test_failed_pin_never_mutates_dns(self):
+        from pyDANETLSA import TLSAValidationError
+        spec = importlib.util.spec_from_file_location("cmd", "/home/okoeroo/transip-cmd/transip-cmd.py")
+        cmd = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cmd)
+        args = Namespace(protocol="smtp", fqdn="mail.example.org", port=25,
+                         domain="example.org", tcpudp="tcp", certfile=None,
+                         tlsa_311="auto", tlsa_211="auto")
+        for method in ("tlsa_rdata_3_1_1", "tlsa_rdata_2_1_1"):
+            with self.subTest(method=method), patch.object(cmd, "DANETLSA") as factory:
+                domain = Mock()
+                getattr(factory.return_value, method).side_effect = TLSAValidationError("mismatch")
+                with self.assertRaises(TLSAValidationError):
+                    cmd.update_danetlsa(domain, args)
+                domain.dns.create.assert_not_called()
+                domain.dns.delete.assert_not_called()

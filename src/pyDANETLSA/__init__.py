@@ -3,6 +3,7 @@
 import os
 import ssl
 import socket
+import re
 import ftplib
 import imaplib
 import poplib
@@ -10,6 +11,7 @@ import smtplib
 import OpenSSL.crypto as crypto
 from enum import Enum
 
+from .libs.chain import TLSAValidationError, probe_tlsa_211
 from .libs import funcs
 from .libs import dnstools
 from .libs.dnstools import TLSAResolutionError, resolve_tlsa_owner
@@ -177,8 +179,31 @@ class DANETLSA(object):
     def subject_dn(self):
         return funcs.x509_to_subject_dn(self.cert)
 
-    def tlsa_rdata_3_1_1(self):
-        return "3 1 1 " + self.pubkey_hex()
+    def tlsa_rdata_2_1_1(self, expected_sha256=None):
+        """Calculate the issuing CA hash, or validate a supplied hash, over TCP."""
+        if self.transport_proto != "tcp":
+            raise TLSAValidationError("Live TLSA 2 1 1 probing supports TCP only")
+        if not hasattr(self, "cert_der"):
+            raise TLSAValidationError("Call connect() before calculating TLSA records")
+        return probe_tlsa_211(self.fqdn, self.port,
+                              DANETLS_protocol_to_str(self.app_protocol),
+                              expected_sha256, self.cert_der, self.timeout)
+
+    def tlsa_rdata_3_1_1(self, expected_sha256=None):
+        """Calculate the connected leaf SPKI hash and optionally verify a pin."""
+        if not hasattr(self, "cert"):
+            raise TLSAValidationError("Call connect() before calculating TLSA records")
+        actual = self.pubkey_hex()
+        if expected_sha256 is not None and expected_sha256.lower() != "auto":
+            expected = expected_sha256.lower()
+            if not re.fullmatch(r"[0-9a-f]{64}", expected):
+                raise TLSAValidationError("Expected a 64-character SHA-256 SPKI hash")
+            if expected != actual:
+                raise TLSAValidationError(
+                    f"TLSA 3 1 1 mismatch for {self.fqdn}:{self.port}: "
+                    f"expected {expected}, received {actual}"
+                )
+        return "3 1 1 " + actual
 
     def tlsa_rr_name_host(self):
         return "_" + str(self.port) + "." + \
