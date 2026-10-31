@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "2.1.1"
 description = "Python library to generate a TLSA record format based on the active certificate on a host."
 readme = "README.md"
 authors = [{ name = "Oscar Koeroo", email = "okoeroo@gmail.com" }]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "cryptography",
     "pyOpenSSL",
@@ -19,7 +20,6 @@ requires-python = ">=3.8"
 keywords = ["DANE", "TLSA", "X.509", "X509", "certificate"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
